@@ -35,18 +35,17 @@ impl Vertex2D {
 }
 
 const VERTICES: &[Vertex2D] = &[
-    Vertex2D {
-        position: [0.0, 0.5],
-        color: [1.0, 0.0, 0.0],
-    },
-    Vertex2D {
-        position: [-0.5, -0.5],
-        color: [0.0, 1.0, 0.0],
-    },
-    Vertex2D {
-        position: [0.5, -0.5],
-        color: [0.0, 0.0, 1.0],
-    },
+    Vertex2D { position: [-0.0868241, 0.49240386], color: [0.0, 0.0, 0.5] }, // A
+    Vertex2D { position: [-0.49513406, 0.06958647], color: [0.0, 0.0, 0.5] }, // B
+    Vertex2D { position: [-0.21918549, -0.44939706], color: [0.5, 0.0, 0.0] }, // C
+    Vertex2D { position: [0.35966998, -0.3473291], color: [0.5, 0.0, 0.0] }, // D
+    Vertex2D { position: [0.44147372, 0.2347359], color: [0.5, 0.0, 0.0] }, // E
+];
+
+const INDICES: &[u16] = &[
+    0, 1, 4,
+    1, 2, 4,
+    2, 3, 4,
 ];
 
 struct State {
@@ -57,7 +56,8 @@ struct State {
     size: winit::dpi::PhysicalSize<u32>,
     render_pipeline: wgpu::RenderPipeline,
     vertex_buffer: wgpu::Buffer,
-    num_vertices: u32,
+    index_buffer: wgpu::Buffer,
+    num_indices: u32,
 }
 
 impl State {
@@ -131,7 +131,7 @@ impl State {
                 })],
             }),
             primitive: wgpu::PrimitiveState {
-                topology: wgpu::PrimitiveTopology::TriangleList,
+                topology: wgpu::PrimitiveTopology::TriangleStrip,
                 strip_index_format: None,
                 front_face: wgpu::FrontFace::Ccw,
                 cull_mode: Some(wgpu::Face::Back),
@@ -154,7 +154,13 @@ impl State {
             usage: wgpu::BufferUsages::VERTEX,
         });
 
-        let num_vertices = VERTICES.len() as u32;
+        let index_buffer = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Index Buffer"),
+            contents: bytemuck::cast_slice(INDICES),
+            usage: wgpu::BufferUsages::INDEX,
+        });
+
+        let num_indices = INDICES.len() as u32;
 
         Self {
             surface,
@@ -164,7 +170,8 @@ impl State {
             size,
             render_pipeline,
             vertex_buffer,
-            num_vertices,
+            index_buffer,
+            num_indices,
         }
     }
 
@@ -217,7 +224,8 @@ impl State {
 
             render_pass.set_pipeline(&self.render_pipeline);
             render_pass.set_vertex_buffer(0, self.vertex_buffer.slice(..));
-            render_pass.draw(0..self.num_vertices, 0..1);
+            render_pass.set_index_buffer(self.index_buffer.slice(..), wgpu::IndexFormat::Uint16);
+            render_pass.draw_indexed(0..self.num_indices, 0, 0..1);
         }
 
         self.queue.submit(std::iter::once(encoder.finish()));

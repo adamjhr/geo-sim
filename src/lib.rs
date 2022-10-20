@@ -1,3 +1,5 @@
+use std::array;
+
 use wgpu::util::DeviceExt;
 use winit::{
     event::*,
@@ -5,6 +7,74 @@ use winit::{
     window::Window,
     window::WindowBuilder,
 };
+
+// --------------------------- Image loading --------------------------- //
+
+struct MapData<T> {
+    label: String,
+    max: T,
+    min: T,
+    data: Vec<T>,
+    vertexes: Vec<Vertex2D>,
+    indices: Vec<>
+}
+
+impl MapData<f64> {
+
+    fn new(path: &str, max: f64, min: f64, label: String) -> Self {
+        
+        let image = image::open(path).unwrap().to_luma32f();
+        let raw = image.as_raw();
+        let diff = max - min;
+        let data:Vec<f64> = raw.iter().map(|n| (*n as f64 / 255.) * diff + min).collect();
+    
+        Self {
+            label,
+            max,
+            min,
+            data
+        }
+    }
+
+}
+
+impl MapData<u64> {
+
+    fn new(path: &str, max: u64, min: u64, label: String) -> Self {
+        
+        let image = image::open(path).unwrap().to_luma16();
+        let raw = image.as_raw();
+        let diff = max - min;
+        let data:Vec<u64> = raw.iter().map(|n| (*n as u64 / 255) * diff + min).collect();
+    
+        Self {
+            label,
+            max,
+            min,
+            data
+        }
+    }
+
+    fn rate_change(&mut self, rate_data: MapData<f64>) {
+
+        if rate_data.data.len() != self.data.len() {
+            panic!("Lengths not equal");
+        }
+
+        self.data = self.data
+                    .iter()
+                    .zip(rate_data.data)
+                    .map(|(&a, b)| (a as f64 * b) as u64)
+                    .collect();
+
+    }
+
+}
+
+
+
+
+// --------------------------- WGPU --------------------------- //
 
 #[repr(C)]
 #[derive(Copy, Clone, Debug, bytemuck::Pod, bytemuck::Zeroable)]
